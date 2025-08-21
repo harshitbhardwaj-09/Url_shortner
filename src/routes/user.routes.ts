@@ -1,13 +1,17 @@
 import express from 'express';
-import {db} from '../db/index.ts'
-import {usersTable} from '../models/index.ts'
+import {db} from '../db/index'
+import {usersTable} from '../models/index'
 import {eq} from 'drizzle-orm'
 import { randomBytes , createHmac} from 'crypto';
+import {signupPostRequestBodySchema} from '../validation/request.validation'
 const router=express.Router();
 
 router.post('/signup',async(req,res)=>{
-    const {firstName,lastName,email,password}=req.body;
-
+    const validationResult = await signupPostRequestBodySchema.safeParseAsync(req.body);
+    if(validationResult.error){
+        return res.status(400).json({error: validationResult.error.message});
+    }
+    const {email, firstName, lastName, password} = validationResult.data;
     const [existingUser]=await db.select({
         id:usersTable.id,
     }).from(usersTable)
