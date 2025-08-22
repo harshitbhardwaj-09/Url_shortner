@@ -1,9 +1,11 @@
 import express from 'express';
 import {db} from '../db/index'
 import {usersTable} from '../models/index'
-import {eq} from 'drizzle-orm'
-import { randomBytes , createHmac} from 'crypto';
 import {signupPostRequestBodySchema} from '../validation/request.validation'
+import {hashPasswordWithSalt} from '../utils/hash'
+import {getUserByEmail} from '../services/user.service'
+
+
 const router=express.Router();
 
 router.post('/signup',async(req,res)=>{
@@ -12,10 +14,9 @@ router.post('/signup',async(req,res)=>{
         return res.status(400).json({error: validationResult.error.message});
     }
     const {email, firstName, lastName, password} = validationResult.data;
-    const [existingUser]=await db.select({
-        id:usersTable.id,
-    }).from(usersTable)
-    .where(eq(usersTable.email,email));
+
+    const existingUser=await getUserByEmail(email);
+
 
     if(existingUser){
         return res
@@ -24,8 +25,9 @@ router.post('/signup',async(req,res)=>{
             error: `user with email ${email} already exist!`
         })
     }
-    const salt = randomBytes(256).toString('hex');
-    const hashedPassword = createHmac('sha256',salt).update(password).digest('hex');
+
+    const {salt,password:hashedPassword}=hashPasswordWithSalt(password);
+   
     const [user] =await db.insert(usersTable).values({
         email,
         firstName,
