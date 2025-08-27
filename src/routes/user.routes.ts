@@ -5,6 +5,7 @@ import {signupPostRequestBodySchema,loginPostRequestBodySchema} from '../validat
 import {hashPasswordWithSalt} from '../utils/hash'
 import {createHmac} from 'crypto'
 import {getUserByEmail} from '../services/user.service'
+import {generateToken} from '../utils/jwt'
 
 
 const router=express.Router();
@@ -63,15 +64,9 @@ router.post('/login',async(req,res)=>{
     if(user.password!==hashedPassword){
         return res.status(400).json({error : 'Invalid password'});
     }
+    const token = generateToken(user.id);
     
-    return res.status(200).json({
-        data: {
-            userId: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName
-        }
-    });
+    return res.json({token});
 });
 
 export default router;

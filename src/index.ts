@@ -1,5 +1,6 @@
 import express, { Application, Request, Response } from 'express';
-import userRoutes from './routes/user.routes'
+import userRoutes from './routes/user.routes';
+import urlRoutes from './routes/url.routes';
 const app: Application = express();
 const PORT = process.env.PORT ?? 8000;
 
@@ -9,12 +10,18 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use('/api/urls', urlRoutes);
 
 // Basic route
 app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'Welcome to URL Shortener API!',
-    status: 'success'
+    status: 'success',
+    endpoints: {
+      users: '/api/users',
+      urls: '/api/urls',
+      redirect: '/:shortCode'
+    }
   });
 });
 
@@ -25,6 +32,9 @@ app.get('/health', (req: Request, res: Response) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Short URL redirect - this should be last to avoid conflicts
+app.use('/', urlRoutes);
 
 // Start server
 app.listen(PORT, () => {
