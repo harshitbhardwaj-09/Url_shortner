@@ -1,0 +1,46 @@
+# Development override for docker-compose
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Development Nginx (single app instance)
+  nginx:
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "3000:80"
+
+  # Single app instance for development
+  app:
+    build:
+      context: .
+      target: development
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/postgres
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - JWT_SECRET=dev-secret-key
+      - JWT_EXPIRES_IN=7d
+      - BASE_URL=http://localhost:3000
+      - INSTANCE_ID=dev-app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - url_shortener_network
+
+  # Override app instances to not start in dev mode
+  app1:
+    profiles: ["production"]
+  app2:
+    profiles: ["production"]
+  app3:
+    profiles: ["production"]

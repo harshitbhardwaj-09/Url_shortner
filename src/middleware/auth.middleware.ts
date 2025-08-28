@@ -19,7 +19,7 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
     }
 
     req.userId = decoded.id;
-    next();
+    return next();
 }
 
 export { AuthenticatedRequest };

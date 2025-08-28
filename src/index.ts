@@ -62,13 +62,25 @@ app.get('/health', async (req: Request, res: Response) => {
   res.status(overallStatus === 'OK' ? 200 : 503).json({
     status: overallStatus,
     timestamp: new Date().toISOString(),
+    instance: {
+      id: process.env.INSTANCE_ID || 'standalone',
+      hostname: require('os').hostname(),
+      pid: process.pid,
+      memory: process.memoryUsage(),
+      cpu: process.cpuUsage()
+    },
     services: {
       redis: redisHealthy ? 'UP' : 'DOWN',
       rabbitmq: queueHealthy ? 'UP' : 'DOWN',
       database: 'UP' // Assume DB is up if app is running
     },
+    loadBalancer: {
+      enabled: !!process.env.INSTANCE_ID,
+      nginx: req.headers['x-forwarded-for'] ? 'DETECTED' : 'DIRECT'
+    },
     version: process.env.npm_package_version || '1.0.0',
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 

@@ -1,4 +1,124 @@
 services:
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app1
+      - app2
+      - app3
+    networks:
+      - url_shortener_network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Application Instance 1
+  app1:
+    build:
+      context: .
+      target: production
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/postgres
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - JWT_SECRET=your-super-secret-jwt-key-here
+      - JWT_EXPIRES_IN=7d
+      - BASE_URL=http://localhost
+      - INSTANCE_ID=app1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - url_shortener_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http=require('http');const options={hostname:'localhost',port:8000,path:'/health',timeout:2000};const req=http.request(options,(res)=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Application Instance 2
+  app2:
+    build:
+      context: .
+      target: production
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/postgres
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - JWT_SECRET=your-super-secret-jwt-key-here
+      - JWT_EXPIRES_IN=7d
+      - BASE_URL=http://localhost
+      - INSTANCE_ID=app2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - url_shortener_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http=require('http');const options={hostname:'localhost',port:8000,path:'/health',timeout:2000};const req=http.request(options,(res)=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Application Instance 3
+  app3:
+    build:
+      context: .
+      target: production
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/postgres
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - JWT_SECRET=your-super-secret-jwt-key-here
+      - JWT_EXPIRES_IN=7d
+      - BASE_URL=http://localhost
+      - INSTANCE_ID=app3
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - url_shortener_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http=require('http');const options={hostname:'localhost',port:8000,path:'/health',timeout:2000};const req=http.request(options,(res)=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database
   db:
     image: postgres:15-alpine
     restart: always
@@ -18,6 +138,7 @@ services:
     networks:
       - url_shortener_network
 
+  # Redis Cache
   redis:
     image: redis:7-alpine
     restart: always
@@ -25,7 +146,7 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --requirepass ""
+    command: redis-server --appendonly yes --requirepass "" --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -34,6 +155,7 @@ services:
     networks:
       - url_shortener_network
 
+  # RabbitMQ Message Queue
   rabbitmq:
     image: rabbitmq:3-management-alpine
     restart: always
@@ -55,7 +177,7 @@ services:
     networks:
       - url_shortener_network
 
-  # Optional: Redis Commander for Redis management
+  # Redis Commander for Redis management
   redis-commander:
     image: rediscommander/redis-commander:latest
     restart: always
@@ -64,7 +186,8 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - url_shortener_network
 
@@ -73,6 +196,7 @@ volumes:
   redis_data:
   rabbitmq_data:
   rabbitmq_logs:
+  nginx_logs:
 
 networks:
   url_shortener_network:
