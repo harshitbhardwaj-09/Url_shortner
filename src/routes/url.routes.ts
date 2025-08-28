@@ -1,5 +1,10 @@
 import express from 'express';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.middleware';
+import { 
+    urlCreationLimiter,
+    redirectLimiter,
+    analyticsLimiter
+} from '../middleware/rate-limiter.middleware';
 import {
     createUrlPostRequestBodySchema,
     updateUrlPutRequestBodySchema,
@@ -19,7 +24,7 @@ import {
 const router = express.Router();
 
 // Create new shortened URL (Protected)
-router.post('/create', authenticateToken, async (req: AuthenticatedRequest, res) => {
+router.post('/create', urlCreationLimiter, authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
         const validationResult = await createUrlPostRequestBodySchema.safeParseAsync(req.body);
         
@@ -71,7 +76,7 @@ router.get('/list', authenticateToken, async (req: AuthenticatedRequest, res) =>
         
         const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
         
-        const urlsWithShortUrl = result.urls.map(url => ({
+        const urlsWithShortUrl = result.urls.map((url: any) => ({
             ...url,
             shortUrl: `${baseUrl}/${url.shortCode}`,
         }));
@@ -86,7 +91,7 @@ router.get('/list', authenticateToken, async (req: AuthenticatedRequest, res) =>
 });
 
 // Get URL analytics (Protected)
-router.get('/:id/analytics', authenticateToken, async (req: AuthenticatedRequest, res) => {
+router.get('/:id/analytics', analyticsLimiter, authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
         const { id } = req.params;
         const userId = req.userId!;
@@ -162,7 +167,7 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) 
 });
 
 // Redirect to original URL (Public route - no auth required)
-router.get('/:shortCode', async (req, res) => {
+router.get('/:shortCode', redirectLimiter, async (req, res) => {
     try {
         const { shortCode } = req.params;
 
@@ -177,8 +182,12 @@ router.get('/:shortCode', async (req, res) => {
             return res.status(410).json({ error: 'Short URL has expired' });
         }
 
-        // Increment click count
-        await incrementClickCount(shortCode);
+        // Increment click count with analytics data
+        const userAgent = req.get('User-Agent');
+        const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+        const referrer = req.get('Referer');
+        
+        await incrementClickCount(shortCode, userAgent, ipAddress, referrer);
 
         // Redirect to original URL
         return res.redirect(301, url.originalUrl);
