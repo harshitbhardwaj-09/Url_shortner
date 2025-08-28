@@ -104,6 +104,13 @@ dist/
 ehthumbs.db
 Thumbs.db
 
-AWS_DEPLOYEMENT_GUIDE.md
+# Documentation files (auto-generated)
+AWS_DEPLOYMENT_GUIDE.md
 IMPLEMENTATION_GUIDE.md
 LOAD_BALANCING_GUIDE.md
+
+# Docker volumes
+nginx_logs/
+
+# Environment files
+.env*
